@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>VR Technical Interview Simulator</title>
+
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+
+  <style>
+    body { margin: 0; }
+  </style>
+
+  <script>
+    /***********************
+     * QUESTION DATABASE
+     ***********************/
+    const QUESTIONS = [
+      {
+        question: "What is HTML?",
+        keywords: ["markup", "structure", "web"],
+        score: 1
+      },
+      {
+        question: "What is CSS used for?",
+        keywords: ["style", "design", "layout"],
+        score: 1
+      },
+      {
+        question: "Explain JavaScript in simple terms.",
+        keywords: ["programming", "logic", "interactive"],
+        score: 2
+      },
+      {
+        question: "What is an API?",
+        keywords: ["communication", "data", "server"],
+        score: 2
+      },
+      {
+        question: "Difference between let and var?",
+        keywords: ["scope", "block", "function"],
+        score: 2
+      }
+    ];
+
+    /***********************
+     * VOICE INPUT
+     ***********************/
+    window.SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+
+    recognition.onerror = (e) => {
+      alert("Voice recognition error. Please try again.");
+      console.error(e);
+    };
+
+    /***********************
+     * INTERVIEW MANAGER
+     ***********************/
+    AFRAME.registerComponent("interview-manager", {
+      init: function () {
+        this.index = 0;
+        this.score = 0;
+
+        this.questionText = document.querySelector("#questionText");
+        this.answerText = document.querySelector("#answerText");
+        this.feedbackText = document.querySelector("#feedbackText");
+        this.progressText = document.querySelector("#progressText");
+
+        this.loadQuestion();
+      },
+
+      loadQuestion: function () {
+        if (this.index >= QUESTIONS.length) {
+          this.endInterview();
+          return;
+        }
+
+        this.questionText.setAttribute(
+          "value",
+          "Technical Question:\n" + QUESTIONS[this.index].question
+        );
+        this.answerText.setAttribute("value", "Click the mic and speak");
+        this.feedbackText.setAttribute("value", "");
+        this.progressText.setAttribute(
+          "value",
+          "Question " + (this.index + 1) + " / " + QUESTIONS.length
+        );
+      },
+
+      submitAnswer: function (speech) {
+        this.answerText.setAttribute("value", "You said:\n" + speech);
+
+        let keywords = QUESTIONS[this.index].keywords;
+        let matches = 0;
+
+        keywords.forEach(k => {
+          if (speech.includes(k)) matches++;
+        });
+
+        if (matches > 0) {
+          this.score += QUESTIONS[this.index].score;
+          this.feedbackText.setAttribute("value", "Good answer ✔");
+        } else {
+          this.feedbackText.setAttribute(
+            "value",
+            "Needs improvement ❌ Try explaining more clearly."
+          );
+        }
+
+        this.index++;
+        setTimeout(() => this.loadQuestion(), 3000);
+      },
+
+      endInterview: function () {
+        this.questionText.setAttribute(
+          "value",
+          "Interview Complete!\nFinal Score: " + this.score
+        );
+        this.answerText.setAttribute("value", "");
+        this.feedbackText.setAttribute(
+          "value",
+          "Thank you for attending the technical interview."
+        );
+        this.progressText.setAttribute("value", "");
+      }
+    });
+
+    /***********************
+     * START VOICE INPUT
+     ***********************/
+    function startInterviewVoice() {
+      recognition.start();
+      recognition.onresult = (event) => {
+        const transcript =
+          event.results[0][0].transcript.toLowerCase();
+
+        const manager =
+          document.querySelector("[interview-manager]")
+            .components["interview-manager"];
+
+        manager.submitAnswer(transcript);
+      };
+    }
+  </script>
+</head>
+
+<body>
+  <a-scene interview-manager>
+
+    <!-- Environment -->
+    <a-sky color="#2d3436"></a-sky>
+    <a-plane
+      position="0 0 -4"
+      rotation="-90 0 0"
+      width="30"
+      height="30"
+      color="#7f8c8d">
+    </a-plane>
+
+    <!-- Walls -->
+    <a-box position="0 3 -12" width="30" height="6" depth="0.5" color="#636e72"></a-box>
+    <a-box position="-15 3 -4" width="0.5" height="6" depth="16" color="#636e72"></a-box>
+    <a-box position="15 3 -4" width="0.5" height="6" depth="16" color="#636e72"></a-box>
+
+    <!-- Interviewer -->
+    <a-sphere position="0 2.1 -6" radius="0.45" color="#ffccaa"></a-sphere>
+    <a-cylinder position="0 1 -6" radius="0.4" height="1.6" color="#2d3436"></a-cylinder>
+
+    <!-- Desk -->
+    <a-box position="0 0.8 -5" width="3.5" height="0.2" depth="1.6" color="#8B4513"></a-box>
+
+    <!-- Question -->
+    <a-text
+      id="questionText"
+      position="0 3.8 -4"
+      width="9"
+      align="center"
+      color="white">
+    </a-text>
+
+    <!-- Progress -->
+    <a-text
+      id="progressText"
+      position="0 3.3 -4"
+      width="6"
+      align="center"
+      color="#81ecec">
+    </a-text>
+
+    <!-- Spoken Answer -->
+    <a-text
+      id="answerText"
+      position="0 2.6 -4"
+      width="9"
+      align="center"
+      color="#00cec9">
+    </a-text>
+
+    <!-- Feedback -->
+    <a-text
+      id="feedbackText"
+      position="0 2 -4"
+      width="9"
+      align="center"
+      color="#ffeaa7">
+    </a-text>
+
+    <!-- Mic Button -->
+    <a-circle
+      position="0 1.2 -3"
+      radius="0.35"
+      color="#d63031"
+      onclick="startInterviewVoice()">
+    </a-circle>
+
+    <a-text
+      position="0 0.7 -3"
+      value="Click Mic & Speak"
+      align="center"
+      color="white">
+    </a-text>
+
+    <!-- Camera -->
+    <a-entity position="0 1.6 0">
+      <a-camera>
+        <a-cursor></a-cursor>
+      </a-camera>
+    </a-entity>
+
+  </a-scene>
+</body>
+</html>
